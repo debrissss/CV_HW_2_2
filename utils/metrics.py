@@ -93,8 +93,9 @@ class ExperimentTracker:
         df.to_csv(csv_path, index=False)
         print(f"Results saved to {csv_path}")
 
-        # 2. 绘制 PNG 曲线。展示 Loss、Accuracy 以及 Learning Rate。
-        plt.figure(figsize=(18, 5))
+        # 2. 绘制 PNG 曲线。左图展示 Loss 变化以观察收敛情况；
+        # 右图展示验证集准确率，用于评估过拟合程度。
+        plt.figure(figsize=(12, 5))
         
         # Loss 曲线绘制
         plt.subplot(1, 2, 1)
@@ -107,20 +108,11 @@ class ExperimentTracker:
         plt.grid(True)
         
         # Accuracy 曲线绘制
-        plt.subplot(1, 3, 2)
-        plt.plot(self.history['epoch'], self.history['val_acc'], label='Val Acc', color='green')
+        plt.subplot(1, 2, 2)
+        plt.plot(self.history['epoch'], self.history['val_acc'], label='Val Acc')
         plt.title(f'Accuracy - {self.exp_name}')
         plt.xlabel('Epoch')
         plt.ylabel('Accuracy (%)')
-        plt.legend()
-        plt.grid(True)
-
-        # Learning Rate 曲线绘制
-        plt.subplot(1, 3, 3)
-        plt.plot(self.history['epoch'], self.history['lr'], label='LR', color='red')
-        plt.title(f'Learning Rate - {self.exp_name}')
-        plt.xlabel('Epoch')
-        plt.ylabel('LR')
         plt.legend()
         plt.grid(True)
         
