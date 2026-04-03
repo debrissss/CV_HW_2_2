@@ -41,7 +41,7 @@ class ExperimentTracker:
         }
         self.test_acc = 0.0
 
-    def update(self, epoch, train_loss, val_loss, val_acc):
+    def update(self, epoch, train_loss, val_loss, val_acc, lr):
         """
         更新每轮产生的实验数据。
 
