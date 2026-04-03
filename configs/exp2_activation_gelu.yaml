@@ -1,5 +1,4 @@
-depth: 3
-width: 64
+arch_type: vgg
 act_type: gelu
 norm_type: bn
 epochs: 200

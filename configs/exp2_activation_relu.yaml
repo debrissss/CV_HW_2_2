@@ -1,6 +1,5 @@
 # 实验二：激活函数对比 (ReLU)
-depth: 3
-width: 64
+arch_type: vgg
 act_type: relu
 norm_type: bn
 epochs: 200

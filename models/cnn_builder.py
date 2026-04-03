@@ -23,6 +23,7 @@ class ConfigurableCNN(nn.Module):
                 - use_dropout (bool): 是否启用 Dropout。
                 - kernel_size (int): 卷积核尺寸。
                 - stack_type (str): 实验六的堆叠策略标识。
+                - arch_type (str): 架构类型 ('baseline' 或 'vgg')。
         """
         super().__init__()
         
@@ -37,38 +38,48 @@ class ConfigurableCNN(nn.Module):
         dropout_p = config.get('dropout_p', 0.5)
         kernel_size = config.get('kernel_size', 3) 
         stack_type = config.get('stack_type', 'baseline') 
+        arch_type = config.get('arch_type', 'baseline')
 
         layers = []
         in_channels = 3 # CIFAR-10 输入为 RGB 3 通道
-        curr_width = width
-        
-        # 为了保证不同深度下特征图尺寸变化的一致性，我们将下采样点固定在总深度的 1/3 和 2/3 处。
-        # 这样可以确保输出到分类器前的特征图尺寸（对于 32x32 输入，经过两次 1/2 下采样变为 8x8）。
-        downsample_indices = [depth // 3, (2 * depth) // 3]
 
-        for i in range(depth):
-            # 根据 stack_type（实验六）动态调整卷积块配置
-            # baseline 对应 3x3 堆叠，medium/large 对应 5x5/7x7 对齐感受野
-            if stack_type == 'baseline':
-                layers.append(ConvBlock(in_channels, curr_width, kernel_size=3, padding=1, 
-                                        norm_type=norm_type, act_type=act_type, 
-                                        use_dropout=use_dropout, dropout_p=dropout_p))
-            else:
-                # 使用配置中指定的 kernel_size，并自动计算 padding 以保持特征图尺寸（除非下采样）
-                layers.append(ConvBlock(in_channels, curr_width, kernel_size=kernel_size, padding=kernel_size//2,
-                                        norm_type=norm_type, act_type=act_type))
-
-            # 残差连接逻辑：仅在启用 residual 且通道数对齐（in == out）且不是第一层时应用。
-            # 这是因为 skip connection 要求输入输出维度完全一致。
-            if use_residual and in_channels == curr_width and i > 0:
-                # 替换当前最后一个加入的普通卷积块为残差块
-                layers[-1] = ResidualBlock(curr_width, norm_type=norm_type, act_type=act_type)
-
-            in_channels = curr_width
+        if arch_type == 'vgg':
+            # 实验二要求的 VGG-style 结构：3 个 Block，每个 Block 由 2 个卷积层组成，通道数翻倍
+            block_channels = [64, 128, 256]
+            curr_width = block_channels[-1] # 最终输出通道数
             
-            # 在预设的索引处插入下采样层
-            if i in downsample_indices and i < depth - 1:
+            for out_channels in block_channels:
+                # 每个 Block 包含 2 个 Conv 组合
+                for _ in range(2):
+                    layers.append(ConvBlock(in_channels, out_channels, kernel_size=kernel_size, 
+                                            padding=kernel_size//2, norm_type=norm_type, 
+                                            act_type=act_type, use_dropout=use_dropout, 
+                                            dropout_p=dropout_p))
+                    in_channels = out_channels
+                
+                # 每个 Block 结尾由 MaxPool2d (stride=2) 进行下采样
                 layers.append(DownsampleBlock(pool_type=pool_type, in_channels=in_channels, out_channels=in_channels))
+        else:
+            # 默认的 baseline 结构逻辑
+            curr_width = width
+            downsample_indices = [depth // 3, (2 * depth) // 3]
+
+            for i in range(depth):
+                if stack_type == 'baseline':
+                    layers.append(ConvBlock(in_channels, curr_width, kernel_size=3, padding=1, 
+                                            norm_type=norm_type, act_type=act_type, 
+                                            use_dropout=use_dropout, dropout_p=dropout_p))
+                else:
+                    layers.append(ConvBlock(in_channels, curr_width, kernel_size=kernel_size, padding=kernel_size//2,
+                                            norm_type=norm_type, act_type=act_type))
+
+                if use_residual and in_channels == curr_width and i > 0:
+                    layers[-1] = ResidualBlock(curr_width, norm_type=norm_type, act_type=act_type)
+
+                in_channels = curr_width
+                
+                if i in downsample_indices and i < depth - 1:
+                    layers.append(DownsampleBlock(pool_type=pool_type, in_channels=in_channels, out_channels=in_channels))
 
         self.features = nn.Sequential(*layers)
         
