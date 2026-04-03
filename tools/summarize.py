@@ -56,6 +56,10 @@ def summarize_group(group_prefix):
 
     summary_data = [] # 用于保存表格数据
     
+    # 2. 创建专属的汇总目录
+    group_summary_dir = os.path.join(results_dir, f"{group_prefix}_summarize")
+    os.makedirs(group_summary_dir, exist_ok=True)
+
     # 设置绘图风格
     plt.style.use('seaborn-v0_8')
     fig_train, ax_train = plt.subplots(figsize=(10, 6))
@@ -86,7 +90,7 @@ def summarize_group(group_prefix):
     ax_train.set_xlabel("Epoch")
     ax_train.set_ylabel("Loss")
     ax_train.legend()
-    train_plot_path = os.path.join(results_dir, f"summary_{group_prefix}_train_loss.png")
+    train_plot_path = os.path.join(group_summary_dir, f"{group_prefix}_train_loss_comparison.png")
     fig_train.savefig(train_plot_path)
     print(f"--> 已生成训练 Loss 对比图: {train_plot_path}")
 
@@ -95,7 +99,7 @@ def summarize_group(group_prefix):
     ax_val.set_xlabel("Epoch")
     ax_val.set_ylabel("Loss")
     ax_val.legend()
-    val_plot_path = os.path.join(results_dir, f"summary_{group_prefix}_val_loss.png")
+    val_plot_path = os.path.join(group_summary_dir, f"{group_prefix}_val_loss_comparison.png")
     fig_val.savefig(val_plot_path)
     print(f"--> 已生成验证 Loss 对比图: {val_plot_path}")
 
@@ -109,7 +113,7 @@ def summarize_group(group_prefix):
     print("="*40)
     
     # 保存为 CSV
-    table_path = os.path.join(results_dir, f"summary_{group_prefix}_test_acc.csv")
+    table_path = os.path.join(group_summary_dir, f"{group_prefix}_test_acc_summary.csv")
     summary_df.to_csv(table_path, index=False)
     print(f"--> 汇总表已保存至: {table_path}")
 
