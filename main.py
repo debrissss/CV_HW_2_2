@@ -25,13 +25,14 @@ def set_seed(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def run_experiment(config_path, exp_name_override=None):
+def run_experiment(config_path, exp_name_override=None, resume=False):
     """
     执行单次完整的实验流程。
 
     Args:
         config_path (str): 配置文件路径。
         exp_name_override (str, optional): 覆盖默认实验名称。
+        resume (bool): 是否从断点恢复训练。
 
     Returns:
         float: 本次实验在测试集上的准确率 (%)。
@@ -57,18 +58,19 @@ def run_experiment(config_path, exp_name_override=None):
     print(f"Model Parameters: {num_params:,}")
     
     # 4. 初始化训练器并启动训练任务
-    trainer = Trainer(model, train_loader, val_loader, test_loader, config, exp_name)
+    trainer = Trainer(model, train_loader, val_loader, test_loader, config, exp_name, resume=resume)
     trainer.run()
     
     return trainer.tracker.test_acc
 
-def run_repeated_experiment(config_path, times=3):
+def run_repeated_experiment(config_path, times=3, resume=False):
     """
     重复执行多次实验，计算平均值和标准差，以评估模型的稳定性。
 
     Args:
         config_path (str): 配置文件路径。
         times (int): 重复次数，默认为 3 次。
+        resume (bool): 是否尝试从断点恢复。
     """
     accs = []
     base_name = config_path.split('/')[-1].split('.')[0]
@@ -78,7 +80,7 @@ def run_repeated_experiment(config_path, times=3):
         # 每次运行使用不同的种子，模拟不同的权重初始化和数据打乱顺序
         set_seed(42 + i) 
         exp_name = f"{base_name}_run{i+1}"
-        acc = run_experiment(config_path, exp_name_override=exp_name)
+        acc = run_experiment(config_path, exp_name_override=exp_name, resume=resume)
         accs.append(acc)
     
     # 计算统计指标：均值反映了性能水平，标准差反映了鲁棒性
@@ -100,6 +102,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="CNN Comparative Experiments on CIFAR-10")
     parser.add_argument("--config", type=str, required=True, help="配置文件路径")
     parser.add_argument("--repeat", type=int, default=1, help="重复实验次数（用于统计均值与方差）")
+    parser.add_argument("--resume", action="store_true", help="是否从上一次的断点恢复训练")
     
     args = parser.parse_args()
     
@@ -108,7 +111,7 @@ if __name__ == "__main__":
     
     if args.repeat > 1:
         # 进入统计对比模式
-        run_repeated_experiment(args.config, times=args.repeat)
+        run_repeated_experiment(args.config, times=args.repeat, resume=args.resume)
     else:
         # 进入单次训练模式
-        run_experiment(args.config)
+        run_experiment(args.config, resume=args.resume)

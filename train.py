@@ -12,7 +12,7 @@ class Trainer:
     
     该类集成了损失函数定义、优化器配置、设备(CPU/MPS/CUDA)管理以及基于进度条的训练循环。
     """
-    def __init__(self, model, train_loader, val_loader, test_loader, config, exp_name):
+    def __init__(self, model, train_loader, val_loader, test_loader, config, exp_name, resume=False):
         """
         初始化训练器。
 
@@ -23,9 +23,11 @@ class Trainer:
             test_loader (DataLoader): 测试数据加载器。
             config (dict): 包含 lr, weight_decay, epochs 等超参数的配置。
             exp_name (str): 实验名称，用于指标跟踪。
+            resume (bool): 是否尝试从断点恢复实验。
         """
         self.config = config
         self.exp_name = exp_name
+        self.resume = resume
         
         # 设备自适应选择：MacOS M4 优先使用 mps，Linux/Windows 若有英伟达显卡则用 cuda，否则 fallback 到 cpu
         self.device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
@@ -200,8 +202,12 @@ class Trainer:
         
         支持断点续训：启动时会自动检查并加载 `checkpoint.pth`。
         """
-        # 尝试恢复进度
-        start_epoch, best_val_acc = self.load_checkpoint()
+        # 尝试恢复进度（仅在指定 resume=True 时）
+        if self.resume:
+            start_epoch, best_val_acc = self.load_checkpoint()
+        else:
+            start_epoch, best_val_acc = 0, 0.0
+            print(f"--> Starting fresh experiment: {self.exp_name} (Existing results will be overwritten)")
         
         # 预设模型保存路径
         best_model_path = os.path.join(self.tracker.save_dir, "best_model.pth")
