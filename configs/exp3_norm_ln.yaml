@@ -1,0 +1,7 @@
+depth: 3
+width: 64
+norm_type: ln
+act_type: relu
+epochs: 100
+
+# Run command: python main.py --config configs/exp3_norm_ln.yaml

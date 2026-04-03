@@ -1,0 +1,11 @@
+# 实验一：深而窄
+depth: 10
+width: 64
+epochs: 100
+lr: 0.001
+batch_size: 128
+norm_type: bn
+act_type: relu
+pool_type: max
+
+# Run command: python main.py --config configs/exp1_deep_narrow.yaml

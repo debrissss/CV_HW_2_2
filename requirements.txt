@@ -1,0 +1,8 @@
+torch
+torchvision
+torchaudio
+pyyaml
+pandas
+matplotlib
+tqdm
+numpy

@@ -1,0 +1,8 @@
+# 实验二：激活函数对比 (ReLU)
+depth: 3
+width: 64
+act_type: relu
+norm_type: bn
+epochs: 100
+
+# Run command: python main.py --config configs/exp2_activation_relu.yaml

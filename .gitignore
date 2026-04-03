@@ -1,0 +1,28 @@
+# 软件运行产生的文件
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+
+# 下面是本实验特定的忽略规则
+# 数据集文件夹 (CIFAR-10 数据体积大且易重新下载)
+data/
+
+# 实验结果文件夹 (包含 CSV、图片、权重和 Checkpoint)
+# 如果您希望提交结果到 Git，请注释掉下面这一行
+results/
+
+# 操作系统相关
+.DS_Store
+
+# 虚拟环境相关
+venv/
+env/
+.env/
+.conda/
+.python-version
+
+# 开发工具配置
+.vscode/
+.idea/
+.gemini/
