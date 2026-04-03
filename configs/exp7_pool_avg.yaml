@@ -1,5 +1,4 @@
-depth: 3
-width: 64
+arch_type: vgg
 pool_type: avg
 epochs: 200
 

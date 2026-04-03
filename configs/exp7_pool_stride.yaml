@@ -1,5 +1,4 @@
-depth: 3
-width: 64
+arch_type: vgg
 pool_type: stride_conv
 epochs: 200
 
