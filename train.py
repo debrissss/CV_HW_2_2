@@ -51,7 +51,7 @@ class Trainer:
         
         # 初始化指标跟踪器
         self.tracker = ExperimentTracker(exp_name)
-        self.epochs = config.get('epochs', 50)
+        self.epochs = config.get('epochs', 200)
         
         # 在实验开始前，记录并保存模型的详细架构
         self.tracker.log_model_architecture(self.model)

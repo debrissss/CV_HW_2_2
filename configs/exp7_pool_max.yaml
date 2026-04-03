@@ -1,6 +1,6 @@
 depth: 3
 width: 64
 pool_type: max
-epochs: 150
+epochs: 200
 
 # Run command: python main.py --config configs/exp7_pool_max.yaml

@@ -3,6 +3,6 @@ width: 64
 norm_type: bn
 use_dropout: False
 weight_decay: 0.0
-epochs: 150
+epochs: 200
 
 # Run command: python main.py --config configs/exp4_reg_bn.yaml

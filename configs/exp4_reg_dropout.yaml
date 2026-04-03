@@ -4,6 +4,6 @@ norm_type: null
 use_dropout: True
 dropout_p: 0.5
 weight_decay: 0.0
-epochs: 150
+epochs: 200
 
 # Run command: python main.py --config configs/exp4_reg_dropout.yaml

@@ -2,6 +2,6 @@ depth: 3
 width: 64
 act_type: swish
 norm_type: bn
-epochs: 150
+epochs: 200
 
 # Run command: python main.py --config configs/exp2_activation_swish.yaml
