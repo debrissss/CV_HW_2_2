@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from utils.metrics import ExperimentTracker
 
 class Trainer:
@@ -55,6 +56,9 @@ class Trainer:
         
         # 在实验开始前，记录并保存模型的详细架构
         self.tracker.log_model_architecture(self.model)
+        
+        # 初始化余弦退火学习率调度器。T_max 设为总训练轮次，确保学习率在训练结束时降至最低。
+        self.scheduler = CosineAnnealingLR(self.optimizer, T_max=self.epochs)
 
     def train_epoch(self, epoch):
         """
@@ -153,6 +157,7 @@ class Trainer:
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
+            'scheduler_state_dict': self.scheduler.state_dict(),
             'best_val_acc': best_val_acc,
             'config': self.config
         }
@@ -175,6 +180,10 @@ class Trainer:
                 checkpoint = torch.load(path, map_location=self.device)
                 self.model.load_state_dict(checkpoint['model_state_dict'])
                 self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                
+                # 恢复调度器状态
+                if 'scheduler_state_dict' in checkpoint:
+                    self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
                 
                 # 恢复指标历史
                 _ = self.tracker.resume()
@@ -202,8 +211,9 @@ class Trainer:
             train_loss = self.train_epoch(epoch)
             val_loss, val_acc = self.validate(epoch)
             
-            # 更新历史记录
-            self.tracker.update(epoch + 1, train_loss, val_loss, val_acc)
+            # 更新历史记录，包括当前的训练损失、验证损失、验证准确率以及当前学习率
+            current_lr = self.optimizer.param_groups[0]['lr']
+            self.tracker.update(epoch + 1, train_loss, val_loss, val_acc, current_lr)
             
             print(f"Epoch {epoch+1}/{self.epochs} - Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%")
             
@@ -213,6 +223,9 @@ class Trainer:
                 torch.save(self.model.state_dict(), best_model_path)
                 print(f"--> Best model saved with Acc: {val_acc:.2f}%")
                 
+            # 每轮结束进行学习率调度
+            self.scheduler.step()
+            
             # 每轮结束保存 Checkpoint，用于断点恢复
             self.save_checkpoint(epoch + 1, best_val_acc)
         

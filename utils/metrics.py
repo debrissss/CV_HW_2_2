@@ -14,7 +14,8 @@ class ExperimentTracker:
                 'epoch': List[int],
                 'train_loss': List[float],
                 'val_loss': List[float],
-                'val_acc': List[float]
+                'val_acc': List[float],
+                'lr': List[float]
             }
         test_acc (float): 最终测试集的准确率。
     """
@@ -35,7 +36,8 @@ class ExperimentTracker:
             'epoch': [],
             'train_loss': [],
             'val_loss': [],
-            'val_acc': []
+            'val_acc': [],
+            'lr': []
         }
         self.test_acc = 0.0
 
@@ -48,11 +50,13 @@ class ExperimentTracker:
             train_loss (float): 当前轮次的训练损失。
             val_loss (float): 当前轮次的验证损失。
             val_acc (float): 当前轮次的验证准确率 (%)。
+            lr (float): 当前轮次采用的学习率。
         """
         self.history['epoch'].append(epoch)
         self.history['train_loss'].append(train_loss)
         self.history['val_loss'].append(val_loss)
         self.history['val_acc'].append(val_acc)
+        self.history['lr'].append(lr)
 
     def resume(self):
         """
@@ -69,6 +73,10 @@ class ExperimentTracker:
                 self.history['train_loss'] = df['train_loss'].tolist()
                 self.history['val_loss'] = df['val_loss'].tolist()
                 self.history['val_acc'] = df['val_acc'].tolist()
+                if 'lr' in df.columns:
+                    self.history['lr'] = df['lr'].tolist()
+                else:
+                    self.history['lr'] = [0.0] * len(self.history['epoch'])
                 print(f"--> Resumed experiment history from {csv_path} (Last Epoch: {self.history['epoch'][-1]})")
                 return self.history['epoch'][-1]
             except Exception as e:
@@ -85,9 +93,8 @@ class ExperimentTracker:
         df.to_csv(csv_path, index=False)
         print(f"Results saved to {csv_path}")
 
-        # 2. 绘制 PNG 曲线。左图展示 Loss 变化以观察收敛情况；
-        # 右图展示验证集准确率，用于评估过拟合程度。
-        plt.figure(figsize=(12, 5))
+        # 2. 绘制 PNG 曲线。展示 Loss、Accuracy 以及 Learning Rate。
+        plt.figure(figsize=(18, 5))
         
         # Loss 曲线绘制
         plt.subplot(1, 2, 1)
@@ -100,11 +107,20 @@ class ExperimentTracker:
         plt.grid(True)
         
         # Accuracy 曲线绘制
-        plt.subplot(1, 2, 2)
-        plt.plot(self.history['epoch'], self.history['val_acc'], label='Val Acc')
+        plt.subplot(1, 3, 2)
+        plt.plot(self.history['epoch'], self.history['val_acc'], label='Val Acc', color='green')
         plt.title(f'Accuracy - {self.exp_name}')
         plt.xlabel('Epoch')
         plt.ylabel('Accuracy (%)')
+        plt.legend()
+        plt.grid(True)
+
+        # Learning Rate 曲线绘制
+        plt.subplot(1, 3, 3)
+        plt.plot(self.history['epoch'], self.history['lr'], label='LR', color='red')
+        plt.title(f'Learning Rate - {self.exp_name}')
+        plt.xlabel('Epoch')
+        plt.ylabel('LR')
         plt.legend()
         plt.grid(True)
         
