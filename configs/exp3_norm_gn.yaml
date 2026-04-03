@@ -2,6 +2,6 @@ depth: 3
 width: 64
 norm_type: gn
 act_type: relu
-epochs: 100
+epochs: 150
 
 # Run command: python main.py --config configs/exp3_norm_gn.yaml

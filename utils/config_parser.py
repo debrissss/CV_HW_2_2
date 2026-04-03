@@ -21,7 +21,7 @@ def parse_config(config_path):
     default_config = {
         'batch_size': 128,
         'lr': 0.001,
-        'epochs': 100,
+        'epochs': 150,
         'weight_decay': 1e-4,
         'depth': 3,
         'width': 64,

@@ -1,6 +1,6 @@
 depth: 10
 width: 64
 use_residual: True
-epochs: 100
+epochs: 150
 
 # Run command: python main.py --config configs/exp5_residual_on.yaml

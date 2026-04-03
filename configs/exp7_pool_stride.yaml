@@ -1,6 +1,6 @@
 depth: 3
 width: 64
 pool_type: stride_conv
-epochs: 100
+epochs: 150
 
 # Run command: python main.py --config configs/exp7_pool_stride.yaml

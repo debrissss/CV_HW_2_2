@@ -2,6 +2,6 @@ depth: 3
 width: 64
 act_type: gelu
 norm_type: bn
-epochs: 100
+epochs: 150
 
 # Run command: python main.py --config configs/exp2_activation_gelu.yaml

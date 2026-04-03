@@ -2,6 +2,6 @@ depth: 3
 width: 64
 stack_type: baseline
 kernel_size: 3
-epochs: 100
+epochs: 150
 
 # Run command: python main.py --config configs/exp6_kernel_3x3.yaml

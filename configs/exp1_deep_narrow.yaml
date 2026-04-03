@@ -1,7 +1,7 @@
 # 实验一：深而窄
 depth: 10
 width: 64
-epochs: 100
+epochs: 150
 lr: 0.001
 batch_size: 128
 norm_type: bn
