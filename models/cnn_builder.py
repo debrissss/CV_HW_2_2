@@ -60,28 +60,37 @@ class ConfigurableCNN(nn.Module):
                 # 每个 Block 结尾由 MaxPool2d (stride=2) 进行下采样
                 layers.append(DownsampleBlock(pool_type=pool_type, in_channels=in_channels, out_channels=in_channels))
         else:
-            # 默认的 baseline 结构逻辑
+            # 引入现代 CV 的 Stage-Based (分阶段) 堆叠机制
             curr_width = width
-            downsample_indices = [depth // 3, (2 * depth) // 3]
-
-            for i in range(depth):
-                if stack_type == 'baseline':
-                    layers.append(ConvBlock(in_channels, curr_width, kernel_size=3, padding=1, 
-                                            norm_type=norm_type, act_type=act_type, 
-                                            use_dropout=use_dropout, dropout_p=dropout_p))
-                else:
-                    layers.append(ConvBlock(in_channels, curr_width, kernel_size=kernel_size, padding=kernel_size//2,
-                                            norm_type=norm_type, act_type=act_type))
-
-                if use_residual and in_channels == curr_width and i > 0:
-                    layers[-1] = ResidualBlock(curr_width, norm_type=norm_type, act_type=act_type)
-
-                in_channels = curr_width
-                
-                if i in downsample_indices and i < depth - 1:
-                    layers.append(DownsampleBlock(pool_type=pool_type, in_channels=in_channels, out_channels=in_channels))
-
-        self.features = nn.Sequential(*layers)
+            # CIFAR-10 标准分配策略：[n, n, n]，其中 depth = 1(stem) + 3 * n * 2 + 1(fc)
+            n = max(1, (depth - 2) // 6) 
+            
+            # 1. 组装入口特征提取层 (Stem)
+            self.stem = ConvBlock(in_channels, curr_width, kernel_size=3, padding=1, 
+                                  norm_type=norm_type, act_type=act_type, 
+                                  use_dropout=use_dropout, dropout_p=dropout_p)
+            
+            # 2. 分阶段构建主体网络，遵循“尺寸减半、通道加倍”准则
+            # Stage 1: stride=1，维持原特征图尺寸
+            stage1 = self._make_stage(curr_width, curr_width, n, stride=1, 
+                                      use_residual=use_residual, pool_type=pool_type, 
+                                      norm_type=norm_type, act_type=act_type, 
+                                      kernel_size=kernel_size, use_dropout=use_dropout, dropout_p=dropout_p)
+            
+            # Stage 2: stride=2，下采样并增加通道
+            stage2 = self._make_stage(curr_width, curr_width * 2, n, stride=2, 
+                                      use_residual=use_residual, pool_type=pool_type, 
+                                      norm_type=norm_type, act_type=act_type, 
+                                      kernel_size=kernel_size, use_dropout=use_dropout, dropout_p=dropout_p)
+            
+            # Stage 3: stride=2，进一步获取高级抽象特征
+            stage3 = self._make_stage(curr_width * 2, curr_width * 4, n, stride=2, 
+                                      use_residual=use_residual, pool_type=pool_type, 
+                                      norm_type=norm_type, act_type=act_type, 
+                                      kernel_size=kernel_size, use_dropout=use_dropout, dropout_p=dropout_p)
+            
+            curr_width = curr_width * 4
+            self.features = nn.Sequential(self.stem, stage1, stage2, stage3)
         
         # 全局平均池化：将 (B, C, H, W) 转换为 (B, C, 1, 1)，增强模型对空间位置的鲁棒性
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
@@ -104,6 +113,45 @@ class ConfigurableCNN(nn.Module):
         x = torch.flatten(x, 1) # 展平为 (B, C)
         x = self.classifier(x)
         return x
+
+    def _make_stage(self, in_channels, out_channels, num_blocks, stride, use_residual, pool_type, norm_type, act_type, kernel_size, use_dropout, dropout_p):
+        """
+        阶段构建辅助方法。为 Baseline（无残差）和 ResNet（有残差）执行统一的维度、步长分配。
+        """
+        layers = []
+        if use_residual:
+            # 对于残差网络，Stage的第一个Block兼具过渡功能，通过传入 stride 实现空间、通道对齐
+            layers.append(ResidualBlock(in_channels, out_channels, stride=stride, norm_type=norm_type, act_type=act_type, kernel_size=kernel_size))
+            # 剩余的Block都是等维度的特征提取
+            for _ in range(1, num_blocks):
+                layers.append(ResidualBlock(out_channels, out_channels, stride=1, norm_type=norm_type, act_type=act_type, kernel_size=kernel_size))
+        else:
+            # 无残差的普通网络：为了与 ResNet 对齐参数量与预算层数，每个“Block”由两层 Conv 构成
+            if stride == 2:
+                # 遇到阶段间换乘，首先进行通道与空间维度的下探
+                if pool_type == 'stride_conv':
+                    # 步长卷积自带一层卷积预算并处理了换通道
+                    layers.append(DownsampleBlock(pool_type=pool_type, in_channels=in_channels, out_channels=out_channels, norm_type=norm_type, act_type=act_type, kernel_size=kernel_size))
+                    # 补充一层维持通道的 Conv 以补齐一个 Block 内 2 层的预算
+                    layers.append(ConvBlock(out_channels, out_channels, kernel_size=kernel_size, padding=kernel_size//2, norm_type=norm_type, act_type=act_type, use_dropout=use_dropout, dropout_p=dropout_p))
+                else:
+                    # 池化操作不消耗卷积预算，但完成了空间降采样 (Kernel Size 传入通常被安全地视为兼容参数不做改动，或由积木内部判断跳过)
+                    layers.append(DownsampleBlock(pool_type=pool_type, norm_type=norm_type, act_type=act_type, kernel_size=kernel_size))
+                    # 连接首层卷积，完成通道数推展 (in -> out)
+                    layers.append(ConvBlock(in_channels, out_channels, kernel_size=kernel_size, padding=kernel_size//2, norm_type=norm_type, act_type=act_type, use_dropout=use_dropout, dropout_p=dropout_p))
+                    # 补充第二层卷积 (out -> out) 补齐预算
+                    layers.append(ConvBlock(out_channels, out_channels, kernel_size=kernel_size, padding=kernel_size//2, norm_type=norm_type, act_type=act_type, use_dropout=use_dropout, dropout_p=dropout_p))
+            else:
+                # 不具有步长下采样的情况 (例如 Stage 1)，直联 2个普通卷积
+                layers.append(ConvBlock(in_channels, out_channels, kernel_size=kernel_size, padding=kernel_size//2, norm_type=norm_type, act_type=act_type, use_dropout=use_dropout, dropout_p=dropout_p))
+                layers.append(ConvBlock(out_channels, out_channels, kernel_size=kernel_size, padding=kernel_size//2, norm_type=norm_type, act_type=act_type, use_dropout=use_dropout, dropout_p=dropout_p))
+
+            # 剩余的特征提取（每个 Block 也是 2层 Conv），维持 out_channels
+            for _ in range(1, num_blocks):
+                layers.append(ConvBlock(out_channels, out_channels, kernel_size=kernel_size, padding=kernel_size//2, norm_type=norm_type, act_type=act_type, use_dropout=use_dropout, dropout_p=dropout_p))
+                layers.append(ConvBlock(out_channels, out_channels, kernel_size=kernel_size, padding=kernel_size//2, norm_type=norm_type, act_type=act_type, use_dropout=use_dropout, dropout_p=dropout_p))
+
+        return nn.Sequential(*layers)
 
 def get_model(config):
     """

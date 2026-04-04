@@ -1,9 +1,9 @@
 arch_type: vgg
-kernel_size: 7 
+kernel_size: 5       
 use_residual: False
 act_type: relu
 norm_type: bn
 pool_type: max
 epochs: 200
 
-# Run command: python main.py --config configs/exp6_kernel_7x7.yaml
+# Run command: python main.py --config configs/exp6_kernel_5x5.yaml

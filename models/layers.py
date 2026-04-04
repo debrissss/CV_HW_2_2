@@ -102,20 +102,32 @@ class ResidualBlock(nn.Module):
     """
     标准的残差块，包含两个卷积层和一条跳跃连接。
     """
-    def __init__(self, channels, norm_type='bn', act_type='relu'):
+    def __init__(self, in_channels, out_channels, stride=1, norm_type='bn', act_type='relu', kernel_size=3):
         """
         初始化 ResidualBlock。
 
         Args:
-            channels (int): 输入与输出通道数（残差由于加法要求，通道数需保持一致）。
+            in_channels (int): 输入通道数。
+            out_channels (int): 输出通道数。
+            stride (int): 第一层卷积的步长。
             norm_type (str): 归一化类型。
             act_type (str): 激活函数类型。
+            kernel_size (int): 卷积核尺寸。
         """
         super().__init__()
+        # 计算内部计算动态填充
+        padding = kernel_size // 2
+        
         # 第一层卷积
-        self.conv1 = ConvBlock(channels, channels, kernel_size=3, stride=1, padding=1, norm_type=norm_type, act_type=act_type)
-        # 第二层卷积，最后的激活函数由于要放在残差相加之后，因此此处设为 None
-        self.conv2 = ConvBlock(channels, channels, kernel_size=3, stride=1, padding=1, norm_type=norm_type, act_type=None)
+        self.conv1 = ConvBlock(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, norm_type=norm_type, act_type=act_type)
+        # 第二层卷积，最后的激活函数由于要放在残差相加之后，因此此处设为 None，固定 stride=1
+        self.conv2 = ConvBlock(out_channels, out_channels, kernel_size=kernel_size, stride=1, padding=padding, norm_type=norm_type, act_type=None)
+        
+        # Shortcut 连接，用于在输入和输出的维度或分辨率不一致时（跨阶段）对其特征进行投影
+        if stride != 1 or in_channels != out_channels:
+            self.shortcut = ConvBlock(in_channels, out_channels, kernel_size=1, stride=stride, padding=0, norm_type=norm_type, act_type=None)
+        else:
+            self.shortcut = nn.Identity()
         
         # 最终相加后的激活函数
         if act_type == 'relu':
@@ -139,7 +151,7 @@ class ResidualBlock(nn.Module):
         Returns:
             torch.Tensor: 输出特征图，shape: (B, channels, H, W)。
         """
-        residual = x
+        residual = self.shortcut(x)
         out = self.conv1(x)
         out = self.conv2(out)
         # 残差相加：out = F(x) + x
@@ -150,14 +162,17 @@ class DownsampleBlock(nn.Module):
     """
     用于缩小特征图尺寸（下采样）的模块。
     """
-    def __init__(self, pool_type='max', in_channels=None, out_channels=None):
+    def __init__(self, pool_type='max', in_channels=None, out_channels=None, norm_type='bn', act_type='relu', kernel_size=3):
         """
         初始化 DownsampleBlock。
 
         Args:
             pool_type (str): 下采样方式 ('max', 'avg', 'stride_conv')。
-            in_channels (int, optional): 输入通道数（主要供步长卷积使用）。
-            out_channels (int, optional): 输出通道数（主要供步长卷积使用）。
+            in_channels (int, optional): 输入通道数。
+            out_channels (int, optional): 输出通道数。
+            norm_type (str): 用于步长卷积的特征提取同款归一化。
+            act_type (str): 用于步长卷积的特征提取同款激活。
+            kernel_size (int): 专门用于可学习步长卷积的尺寸。
         """
         super().__init__()
         if pool_type == 'max':
@@ -167,9 +182,12 @@ class DownsampleBlock(nn.Module):
             # 保留局部平滑特征，保留更多背景信息
             self.down = nn.AvgPool2d(kernel_size=2, stride=2)
         elif pool_type == 'stride_conv':
-            # 使用可学习参数的卷积进行下采样，相比池化更具灵活性
-            self.down = nn.Conv2d(in_channels, out_channels if out_channels else in_channels, 
-                                  kernel_size=3, stride=2, padding=1)
+            # 使用可学习参数的卷积进行下采样，必须显式给定 in_channels。同时附加对应 Normalize 和 Activation
+            assert in_channels is not None, "stride_conv requires in_channels"
+            actual_out = out_channels if out_channels else in_channels
+            padding = kernel_size // 2
+            self.down = ConvBlock(in_channels, actual_out, kernel_size=kernel_size, stride=2, padding=padding, 
+                                  norm_type=norm_type, act_type=act_type)
         else:
             raise ValueError(f"Unknown pool_type: {pool_type}")
 

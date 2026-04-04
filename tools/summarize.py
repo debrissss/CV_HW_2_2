@@ -60,10 +60,10 @@ def summarize_group(group_prefix):
     group_summary_dir = os.path.join(results_dir, f"{group_prefix}_summarize")
     os.makedirs(group_summary_dir, exist_ok=True)
 
-    # 设置绘图风格
-    plt.style.use('seaborn-v0_8')
-    fig_train, ax_train = plt.subplots(figsize=(10, 6))
-    fig_val, ax_val = plt.subplots(figsize=(10, 6))
+    # 创建 1x2 的子图布局，类似于 utils/metrics.py
+    fig = plt.figure(figsize=(12, 5))
+    ax_train = fig.add_subplot(1, 2, 1)
+    ax_val = fig.add_subplot(1, 2, 2)
 
     for folder in sorted(exp_folders):
         folder_path = os.path.join(results_dir, folder)
@@ -85,23 +85,23 @@ def summarize_group(group_prefix):
             "Test Accuracy (%)": test_acc if test_acc is not None else "N/A"
         })
 
-    # 2. 润色并保存训练 Loss 对比图
+    # 2. 润色并保存 Loss 对比图
     ax_train.set_title(f"Comparison of Training Loss ({group_prefix})")
     ax_train.set_xlabel("Epoch")
     ax_train.set_ylabel("Loss")
     ax_train.legend()
-    train_plot_path = os.path.join(group_summary_dir, f"{group_prefix}_train_loss_comparison.png")
-    fig_train.savefig(train_plot_path)
-    print(f"--> 已生成训练 Loss 对比图: {train_plot_path}")
+    ax_train.grid(True)
 
-    # 3. 润色并保存验证 Loss 对比图
     ax_val.set_title(f"Comparison of Validation Loss ({group_prefix})")
     ax_val.set_xlabel("Epoch")
     ax_val.set_ylabel("Loss")
     ax_val.legend()
-    val_plot_path = os.path.join(group_summary_dir, f"{group_prefix}_val_loss_comparison.png")
-    fig_val.savefig(val_plot_path)
-    print(f"--> 已生成验证 Loss 对比图: {val_plot_path}")
+    ax_val.grid(True)
+
+    fig.tight_layout()
+    plot_path = os.path.join(group_summary_dir, f"{group_prefix}_loss_comparison.png")
+    fig.savefig(plot_path)
+    print(f"--> 已生成 Loss 对比图: {plot_path}")
 
     # 4. 生成汇总表格
     summary_df = pd.DataFrame(summary_data)

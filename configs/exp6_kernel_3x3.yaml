@@ -1,7 +1,9 @@
-depth: 3
-width: 64
-stack_type: baseline
+arch_type: vgg
 kernel_size: 3
+use_residual: False 
+act_type: relu  
+norm_type: bn
+pool_type: max
 epochs: 200
 
 # Run command: python main.py --config configs/exp6_kernel_3x3.yaml
