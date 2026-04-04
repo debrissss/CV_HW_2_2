@@ -59,6 +59,7 @@ class ConfigurableCNN(nn.Module):
                 
                 # 每个 Block 结尾由 MaxPool2d (stride=2) 进行下采样
                 layers.append(DownsampleBlock(pool_type=pool_type, in_channels=in_channels, out_channels=in_channels))
+            self.features = nn.Sequential(*layers)
         else:
             # 引入现代 CV 的 Stage-Based (分阶段) 堆叠机制
             curr_width = width
