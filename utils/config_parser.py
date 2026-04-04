@@ -37,4 +37,12 @@ def parse_config(config_path):
     
     # 将用户定义的配置合并到默认配置中，用户定义的配置具有更高优先级
     final_config = {**default_config, **(config if config else {})}
+    
+    # 强制数值类型转换，防止某些环境下 YAML 解析出字符串导致优化器报错
+    final_config['lr'] = float(final_config['lr'])
+    final_config['weight_decay'] = float(final_config['weight_decay'])
+    final_config['epochs'] = int(final_config['epochs'])
+    final_config['batch_size'] = int(final_config['batch_size'])
+    final_config['dropout_p'] = float(final_config.get('dropout_p', 0.5))
+    
     return final_config
