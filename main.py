@@ -1,6 +1,7 @@
 import argparse
 import torch
 import random
+import os
 import numpy as np
 from utils.config_parser import parse_config
 from utils.data_loader import get_dataloaders
@@ -73,13 +74,17 @@ def run_repeated_experiment(config_path, times=3, resume=False):
         resume (bool): 是否尝试从断点恢复。
     """
     accs = []
-    base_name = config_path.split('/')[-1].split('.')[0]
+    # 使用 os.path 更健壮地提取实验基本名称
+    base_name = os.path.splitext(os.path.basename(config_path))[0]
+    # 创建专门的目录，例如 results/exp1_repeat3
+    repeat_folder = f"{base_name}_repeat{times}"
     
     for i in range(times):
         print(f"\n=== Run {i+1}/{times} for {base_name} ===")
         # 每次运行使用不同的种子，模拟不同的权重初始化和数据打乱顺序
         set_seed(42 + i) 
-        exp_name = f"{base_name}_run{i+1}"
+        # 将各次实验子结果存放在子目录下，例如 results/exp1_repeat3/run1
+        exp_name = f"{repeat_folder}/run{i+1}"
         acc = run_experiment(config_path, exp_name_override=exp_name, resume=resume)
         accs.append(acc)
     
@@ -91,8 +96,9 @@ def run_repeated_experiment(config_path, times=3, resume=False):
     print(f"Mean Test Accuracy: {mean_acc:.2f}%")
     print(f"Std Test Accuracy: {std_acc:.2f}%")
     
-    # 将汇总后的统计结果持久化到文件，方便撰写报告
-    summary_path = f"results/{base_name}_summary.txt"
+    # 将汇总后的统计结果持久化到该实验专属目录下的 summary.txt
+    summary_path = f"results/{repeat_folder}/summary.txt"
+    os.makedirs(os.path.dirname(summary_path), exist_ok=True)
     with open(summary_path, "w") as f:
         f.write(f"Mean: {mean_acc:.2f}\nStd: {std_acc:.2f}\nAll Runs: {accs}\n")
     print(f"Summary saved to {summary_path}")
