@@ -68,11 +68,11 @@ def summarize_group(group_prefix):
     ax_val_acc = fig.add_subplot(1, 3, 3)
 
     # 创建局部放大图 (Inset axes)
-    # 训练/验证 Loss 放大图放于右上角
-    axins_train = ax_train.inset_axes([0.55, 0.55, 0.4, 0.4])
-    axins_val = ax_val.inset_axes([0.55, 0.55, 0.4, 0.4])
-    # 验证准确率放于右下角
-    axins_acc = ax_val_acc.inset_axes([0.55, 0.05, 0.4, 0.4])
+    # 训练/验证 Loss 放大图稍微向下移动，避开右上角的图例
+    axins_train = ax_train.inset_axes([0.55, 0.45, 0.4, 0.4])
+    axins_val = ax_val.inset_axes([0.55, 0.45, 0.4, 0.4])
+    # 验证准确率向上移动，避开底部边缘和可能的重叠
+    axins_acc = ax_val_acc.inset_axes([0.55, 0.25, 0.4, 0.4])
 
     # 收集最后 50 epoch 内所有曲线的最大/小值以便确定 y 轴范围
     last50_train_loss = []
