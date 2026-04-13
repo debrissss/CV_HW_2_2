@@ -11,6 +11,10 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description="CNN 实验结果汇总工具")
     parser.add_argument("--group", type=str, required=True, help="实验组前缀，如 exp1")
+    parser.add_argument("--show-train-inset", action="store_true", help="显示训练 Loss 的局部放大图")
+    parser.add_argument("--show-val-inset", action="store_true", help="显示验证 Loss 的局部放大图")
+    parser.add_argument("--show-acc-inset", action="store_true", help="显示验证准确率的局部放大图")
+    
     return parser.parse_args()
 
 def extract_test_acc(file_path):
@@ -33,12 +37,15 @@ def extract_test_acc(file_path):
             return float(match.group(1))
     return None
 
-def summarize_group(group_prefix):
+def summarize_group(group_prefix, show_train_inset=True, show_val_inset=True, show_acc_inset=True):
     """
     执行指定组的实验汇总。
     
     Args:
         group_prefix (str): 文件夹前缀 (如 'exp1')。
+        show_train_inset (bool): 是否绘制训练 Loss 放大图。
+        show_val_inset (bool): 是否绘制验证 Loss 放大图。
+        show_acc_inset (bool): 是否绘制准确率放大图。
     """
     results_dir = "results"
     if not os.path.exists(results_dir):
@@ -47,7 +54,8 @@ def summarize_group(group_prefix):
 
     # 1. 寻找匹配的文件夹
     exp_folders = [f for f in os.listdir(results_dir) 
-                   if os.path.isdir(os.path.join(results_dir, f)) and f.startswith(group_prefix)]
+                   if os.path.isdir(os.path.join(results_dir, f)) and 
+                   f.startswith(group_prefix) and not f.endswith("_summarize")]
     
     if not exp_folders:
         print(f"未找到前缀为 {group_prefix} 的实验结果。")
@@ -69,10 +77,10 @@ def summarize_group(group_prefix):
 
     # 创建局部放大图 (Inset axes)
     # 训练/验证 Loss 放大图稍微向下移动，避开右上角的图例
-    axins_train = ax_train.inset_axes([0.55, 0.45, 0.4, 0.4])
-    axins_val = ax_val.inset_axes([0.55, 0.45, 0.4, 0.4])
+    axins_train = ax_train.inset_axes([0.55, 0.45, 0.4, 0.4]) if show_train_inset else None
+    axins_val = ax_val.inset_axes([0.55, 0.45, 0.4, 0.4]) if show_val_inset else None
     # 验证准确率向上移动，避开底部边缘和可能的重叠
-    axins_acc = ax_val_acc.inset_axes([0.55, 0.25, 0.4, 0.4])
+    axins_acc = ax_val_acc.inset_axes([0.55, 0.25, 0.4, 0.4]) if show_acc_inset else None
 
     # 收集最后 50 epoch 内所有曲线的最大/小值以便确定 y 轴范围
     last50_train_loss = []
@@ -94,9 +102,9 @@ def summarize_group(group_prefix):
             ax_val.plot(df['epoch'], df['val_loss'], label=folder)
             ax_val_acc.plot(df['epoch'], df['val_acc'], label=folder)
 
-            axins_train.plot(df['epoch'], df['train_loss'])
-            axins_val.plot(df['epoch'], df['val_loss'])
-            axins_acc.plot(df['epoch'], df['val_acc'])
+            if show_train_inset: axins_train.plot(df['epoch'], df['train_loss'])
+            if show_val_inset: axins_val.plot(df['epoch'], df['val_loss'])
+            if show_acc_inset: axins_acc.plot(df['epoch'], df['val_acc'])
 
             if len(df) > 0:
                 max_epoch_overall = max(max_epoch_overall, df['epoch'].max())
@@ -123,9 +131,9 @@ def summarize_group(group_prefix):
             axins.grid(True, linestyle='--', alpha=0.6)
 
     # 应用放大图坐标轴限值
-    set_inset_limits(axins_train, last50_train_loss, max_epoch_overall)
-    set_inset_limits(axins_val, last50_val_loss, max_epoch_overall)
-    set_inset_limits(axins_acc, last50_val_acc, max_epoch_overall)
+    if show_train_inset: set_inset_limits(axins_train, last50_train_loss, max_epoch_overall)
+    if show_val_inset: set_inset_limits(axins_val, last50_val_loss, max_epoch_overall)
+    if show_acc_inset: set_inset_limits(axins_acc, last50_val_acc, max_epoch_overall)
 
     # 2. 润色主图
     ax_train.set_title(f"Comparison of Training Loss ({group_prefix})")
@@ -169,4 +177,4 @@ def summarize_group(group_prefix):
 
 if __name__ == "__main__":
     args = parse_args()
-    summarize_group(args.group)
+    summarize_group(args.group, args.show_train_inset, args.show_val_inset, args.show_acc_inset)
