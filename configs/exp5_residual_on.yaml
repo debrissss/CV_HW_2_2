@@ -1,4 +1,4 @@
-depth: 20
+depth: 50
 width: 16
 use_residual: True
 epochs: 200
