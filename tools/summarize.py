@@ -15,6 +15,12 @@ def parse_args():
     parser.add_argument("--show-val-inset", action="store_true", help="显示验证 Loss 的局部放大图")
     parser.add_argument("--show-acc-inset", action="store_true", help="显示验证准确率的局部放大图")
     
+    # 局部放大图的位置和高度控制
+    parser.add_argument("--loss-inset-y", type=float, default=0.45, help="Loss 放大图的 Y 轴起始位置 (0-1)")
+    parser.add_argument("--loss-inset-h", type=float, default=0.4, help="Loss 放大图的高度比例 (0-1)")
+    parser.add_argument("--acc-inset-y", type=float, default=0.25, help="准确率放大图的 Y 轴起始位置 (0-1)")
+    parser.add_argument("--acc-inset-h", type=float, default=0.4, help="准确率放大图的高度比例 (0-1)")
+    
     return parser.parse_args()
 
 def extract_test_acc(file_path):
@@ -37,7 +43,8 @@ def extract_test_acc(file_path):
             return float(match.group(1))
     return None
 
-def summarize_group(group_prefix, show_train_inset=True, show_val_inset=True, show_acc_inset=True):
+def summarize_group(group_prefix, show_train_inset=False, show_val_inset=False, show_acc_inset=False, 
+                    loss_inset_y=0.45, loss_inset_h=0.4, acc_inset_y=0.25, acc_inset_h=0.4):
     """
     执行指定组的实验汇总。
     
@@ -46,6 +53,10 @@ def summarize_group(group_prefix, show_train_inset=True, show_val_inset=True, sh
         show_train_inset (bool): 是否绘制训练 Loss 放大图。
         show_val_inset (bool): 是否绘制验证 Loss 放大图。
         show_acc_inset (bool): 是否绘制准确率放大图。
+        loss_inset_y (float): Loss 放大图 Y 坐标。
+        loss_inset_h (float): Loss 放大图高度。
+        acc_inset_y (float): 准确率放大图 Y 坐标。
+        acc_inset_h (float): 准确率放大图高度。
     """
     results_dir = "results"
     if not os.path.exists(results_dir):
@@ -76,11 +87,10 @@ def summarize_group(group_prefix, show_train_inset=True, show_val_inset=True, sh
     ax_val_acc = fig.add_subplot(1, 3, 3)
 
     # 创建局部放大图 (Inset axes)
-    # 训练/验证 Loss 放大图稍微向下移动，避开右上角的图例
-    axins_train = ax_train.inset_axes([0.55, 0.45, 0.4, 0.4]) if show_train_inset else None
-    axins_val = ax_val.inset_axes([0.55, 0.45, 0.4, 0.4]) if show_val_inset else None
-    # 验证准确率向上移动，避开底部边缘和可能的重叠
-    axins_acc = ax_val_acc.inset_axes([0.55, 0.25, 0.4, 0.4]) if show_acc_inset else None
+    # 使用命令行传入的坐标和高度参数
+    axins_train = ax_train.inset_axes([0.55, loss_inset_y, 0.4, loss_inset_h]) if show_train_inset else None
+    axins_val = ax_val.inset_axes([0.55, loss_inset_y, 0.4, loss_inset_h]) if show_val_inset else None
+    axins_acc = ax_val_acc.inset_axes([0.55, acc_inset_y, 0.4, acc_inset_h]) if show_acc_inset else None
 
     # 收集最后 50 epoch 内所有曲线的最大/小值以便确定 y 轴范围
     last50_train_loss = []
@@ -177,4 +187,5 @@ def summarize_group(group_prefix, show_train_inset=True, show_val_inset=True, sh
 
 if __name__ == "__main__":
     args = parse_args()
-    summarize_group(args.group, args.show_train_inset, args.show_val_inset, args.show_acc_inset)
+    summarize_group(args.group, args.show_train_inset, args.show_val_inset, args.show_acc_inset,
+                    args.loss_inset_y, args.loss_inset_h, args.acc_inset_y, args.acc_inset_h)
