@@ -16,10 +16,10 @@ def parse_args():
     parser.add_argument("--show-acc-inset", action="store_true", help="显示验证准确率的局部放大图")
     
     # 局部放大图的位置和高度控制
-    parser.add_argument("--loss-inset-y", type=float, default=0.45, help="Loss 放大图的 Y 轴起始位置 (0-1)")
-    parser.add_argument("--loss-inset-h", type=float, default=0.4, help="Loss 放大图的高度比例 (0-1)")
-    parser.add_argument("--acc-inset-y", type=float, default=0.25, help="准确率放大图的 Y 轴起始位置 (0-1)")
-    parser.add_argument("--acc-inset-h", type=float, default=0.4, help="准确率放大图的高度比例 (0-1)")
+    parser.add_argument("--loss-inset-y", type=float, default=0.35, help="Loss 放大图的 Y 轴起始位置 (0-1)")
+    parser.add_argument("--loss-inset-h", type=float, default=0.3, help="Loss 放大图的高度比例 (0-1)")
+    parser.add_argument("--acc-inset-y", type=float, default=0.35, help="准确率放大图的 Y 轴起始位置 (0-1)")
+    parser.add_argument("--acc-inset-h", type=float, default=0.3, help="准确率放大图的高度比例 (0-1)")
     
     return parser.parse_args()
 
