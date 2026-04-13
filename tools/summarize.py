@@ -3,6 +3,7 @@ import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 import re
+import shutil
 
 def parse_args():
     """
@@ -60,23 +61,49 @@ def summarize_group(group_prefix):
     group_summary_dir = os.path.join(results_dir, f"{group_prefix}_summarize")
     os.makedirs(group_summary_dir, exist_ok=True)
 
-    # 创建 1x2 的子图布局，类似于 utils/metrics.py
-    fig = plt.figure(figsize=(12, 5))
-    ax_train = fig.add_subplot(1, 2, 1)
-    ax_val = fig.add_subplot(1, 2, 2)
+    # 创建 1x3 的子图布局
+    fig = plt.figure(figsize=(18, 5))
+    ax_train = fig.add_subplot(1, 3, 1)
+    ax_val = fig.add_subplot(1, 3, 2)
+    ax_val_acc = fig.add_subplot(1, 3, 3)
+
+    # 创建局部放大图 (Inset axes)
+    # 训练/验证 Loss 放大图放于右上角
+    axins_train = ax_train.inset_axes([0.55, 0.55, 0.4, 0.4])
+    axins_val = ax_val.inset_axes([0.55, 0.55, 0.4, 0.4])
+    # 验证准确率放于右下角
+    axins_acc = ax_val_acc.inset_axes([0.55, 0.05, 0.4, 0.4])
+
+    # 收集最后 50 epoch 内所有曲线的最大/小值以便确定 y 轴范围
+    last50_train_loss = []
+    last50_val_loss = []
+    last50_val_acc = []
+    max_epoch_overall = 0
 
     for folder in sorted(exp_folders):
         folder_path = os.path.join(results_dir, folder)
         csv_path = os.path.join(folder_path, f"{folder}.csv")
         test_acc_path = os.path.join(folder_path, f"{folder}_test_acc.txt")
 
-        # 读取指标 CSV
+        # 读取指标 CSV 并复制文件
         if os.path.exists(csv_path):
+            shutil.copy(csv_path, os.path.join(group_summary_dir, f"{folder}.csv"))
             df = pd.read_csv(csv_path)
-            # 绘制训练 Loss
+            
             ax_train.plot(df['epoch'], df['train_loss'], label=folder)
-            # 绘制验证 Loss
             ax_val.plot(df['epoch'], df['val_loss'], label=folder)
+            ax_val_acc.plot(df['epoch'], df['val_acc'], label=folder)
+
+            axins_train.plot(df['epoch'], df['train_loss'])
+            axins_val.plot(df['epoch'], df['val_loss'])
+            axins_acc.plot(df['epoch'], df['val_acc'])
+
+            if len(df) > 0:
+                max_epoch_overall = max(max_epoch_overall, df['epoch'].max())
+                last_50_df = df.tail(50)
+                last50_train_loss.extend(last_50_df['train_loss'].tolist())
+                last50_val_loss.extend(last_50_df['val_loss'].tolist())
+                last50_val_acc.extend(last_50_df['val_acc'].tolist())
         
         # 提取测试准确率
         test_acc = extract_test_acc(test_acc_path)
@@ -85,7 +112,22 @@ def summarize_group(group_prefix):
             "Test Accuracy (%)": test_acc if test_acc is not None else "N/A"
         })
 
-    # 2. 润色并保存 Loss 对比图
+    # 计算局部放大图的极值限制
+    def set_inset_limits(axins, data, max_epoch):
+        if data:
+            y_min, y_max = min(data), max(data)
+            y_pad = (y_max - y_min) * 0.1
+            if y_pad == 0: y_pad = 0.1
+            axins.set_xlim(max(0, max_epoch - 50), max_epoch)
+            axins.set_ylim(y_min - y_pad, y_max + y_pad)
+            axins.grid(True, linestyle='--', alpha=0.6)
+
+    # 应用放大图坐标轴限值
+    set_inset_limits(axins_train, last50_train_loss, max_epoch_overall)
+    set_inset_limits(axins_val, last50_val_loss, max_epoch_overall)
+    set_inset_limits(axins_acc, last50_val_acc, max_epoch_overall)
+
+    # 2. 润色主图
     ax_train.set_title(f"Comparison of Training Loss ({group_prefix})")
     ax_train.set_xlabel("Epoch")
     ax_train.set_ylabel("Loss")
@@ -98,10 +140,16 @@ def summarize_group(group_prefix):
     ax_val.legend()
     ax_val.grid(True)
 
+    ax_val_acc.set_title(f"Comparison of Validation Accuracy ({group_prefix})")
+    ax_val_acc.set_xlabel("Epoch")
+    ax_val_acc.set_ylabel("Accuracy (%)")
+    ax_val_acc.legend()
+    ax_val_acc.grid(True)
+
     fig.tight_layout()
-    plot_path = os.path.join(group_summary_dir, f"{group_prefix}_loss_comparison.png")
+    plot_path = os.path.join(group_summary_dir, f"{group_prefix}_metrics_comparison.png")
     fig.savefig(plot_path)
-    print(f"--> 已生成 Loss 对比图: {plot_path}")
+    print(f"--> 已生成全局指标对比图: {plot_path}")
 
     # 4. 生成汇总表格
     summary_df = pd.DataFrame(summary_data)
