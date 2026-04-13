@@ -65,7 +65,9 @@ class ExperimentTracker:
         Returns:
             int: 恢复的起始轮次 (Epoch)。若无历史记录，返回 0。
         """
-        csv_path = os.path.join(self.save_dir, f"{self.exp_name}.csv")
+        # 获取实验名称的基本名称，避免 exp_name 中包含路径分隔符时导致保存失败
+        base_exp_name = os.path.basename(self.exp_name)
+        csv_path = os.path.join(self.save_dir, f"{base_exp_name}.csv")
         if os.path.exists(csv_path):
             try:
                 df = pd.read_csv(csv_path)
@@ -89,7 +91,8 @@ class ExperimentTracker:
         """
         # 1. 保存为 CSV，方便后续进行精确的数值分析或对比
         df = pd.DataFrame(self.history)
-        csv_path = os.path.join(self.save_dir, f"{self.exp_name}.csv")
+        base_exp_name = os.path.basename(self.exp_name)
+        csv_path = os.path.join(self.save_dir, f"{base_exp_name}.csv")
         df.to_csv(csv_path, index=False)
         print(f"Results saved to {csv_path}")
 
@@ -116,7 +119,7 @@ class ExperimentTracker:
         plt.legend()
         plt.grid(True)
         
-        png_path = os.path.join(self.save_dir, f"{self.exp_name}.png")
+        png_path = os.path.join(self.save_dir, f"{base_exp_name}.png")
         plt.tight_layout()
         plt.savefig(png_path)
         plt.close()
@@ -154,6 +157,7 @@ class ExperimentTracker:
             test_acc (float): 最终在测试集上的准确率 (%)。
         """
         self.test_acc = test_acc
-        with open(os.path.join(self.save_dir, f"{self.exp_name}_test_acc.txt"), "w") as f:
+        base_exp_name = os.path.basename(self.exp_name)
+        with open(os.path.join(self.save_dir, f"{base_exp_name}_test_acc.txt"), "w") as f:
             f.write(f"Test Accuracy: {test_acc:.2f}%\n")
         print(f"Final Test Accuracy: {test_acc:.2f}%")
