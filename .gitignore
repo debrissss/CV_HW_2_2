@@ -11,6 +11,7 @@ data/
 # 实验结果文件夹 (包含 CSV、图片、权重和 Checkpoint)
 # 如果您希望提交结果到 Git，请注释掉下面这一行
 results/
+document/
 
 # 操作系统相关
 .DS_Store

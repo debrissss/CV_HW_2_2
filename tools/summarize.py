@@ -164,10 +164,18 @@ def summarize_group(group_prefix, show_train_inset=False, show_val_inset=False, 
     ax_val_acc.legend()
     ax_val_acc.grid(True)
 
+    # 矢量图选项：设置学术论文常用的字体风格
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['axes.unicode_minus'] = False # 解决负号显示问题
+
     fig.tight_layout()
-    plot_path = os.path.join(group_summary_dir, f"{group_prefix}_metrics_comparison.png")
-    fig.savefig(plot_path)
-    print(f"--> 已生成全局指标对比图: {plot_path}")
+    # 同时生成 PNG (方便预览) 和 PDF (矢量图，适合导入 LaTeX 论文)
+    plot_path_png = os.path.join(group_summary_dir, f"{group_prefix}_metrics_comparison.png")
+    plot_path_pdf = os.path.join(group_summary_dir, f"{group_prefix}_metrics_comparison.pdf")
+    
+    fig.savefig(plot_path_png, dpi=300) # 高分辨率预览图
+    fig.savefig(plot_path_pdf, format='pdf', bbox_inches='tight') # 矢量图
+    print(f"--> 已生成全局指标对比图: \n    - {plot_path_png}\n    - {plot_path_pdf}")
 
     # 4. 生成汇总表格
     summary_df = pd.DataFrame(summary_data)
